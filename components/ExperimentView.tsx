@@ -132,7 +132,7 @@ const ExperimentView: React.FC<ExperimentViewProps> = ({ experiment, onBack }) =
                 <p className="text-[var(--muted-foreground)]">{t('total_steps')}: <span className="font-bold text-[var(--primary-focus)]">{history.length - 1}</span></p>
                 <div className="mt-4 h-64">
                     <h4 className="font-medium text-[var(--foreground)] mb-2">{t('state_counts')}</h4>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" debounce={100}>
                         <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                             <XAxis dataKey="name" stroke="var(--chart-axis)" />
