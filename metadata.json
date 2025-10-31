@@ -1,0 +1,5 @@
+{
+  "name": "Markov Chains Interactive Learning",
+  "description": "An interactive and intuitive UI for teaching Markov Chains, featuring demonstrations, experiments, and an admin panel to create new educational content. Utilizes manipulable graphs and animations to explain concepts.",
+  "requestFramePermissions": []
+}
