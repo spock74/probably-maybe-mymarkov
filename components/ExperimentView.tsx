@@ -1,5 +1,4 @@
 import React, { useMemo, useEffect, useState } from 'react';
-// FIX: Import MarkerType to resolve TypeScript error with edge marker types.
 import ReactFlow, { MiniMap, Controls, Background, Node, Edge, MarkerType } from 'reactflow';
 import { motion } from 'framer-motion';
 import { Experiment, MarkovNodeType } from '../types';
@@ -8,24 +7,11 @@ import { getLayoutedElements } from '../lib/getLayoutedElements';
 import Button from './common/Button';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useLanguage } from '../contexts/LanguageContext';
+import AnimatedNode from './animated/AnimatedNode';
+import AnimatedEdge from './animated/AnimatedEdge';
 
-
-const CustomNode: React.FC<{data: {label: string, isCurrent?: boolean}}> = ({ data }) => {
-    const isCurrent = data.isCurrent ?? false;
-    return (
-        <div className={`
-            px-4 py-2 rounded-lg shadow-md border-2 
-            ${isCurrent 
-                ? 'bg-[var(--primary)] border-[var(--primary-light)] text-white shadow-[var(--primary-shadow)]' 
-                : 'bg-[var(--muted)] border-[var(--border)] text-[var(--foreground)]'}
-            transition-all duration-300
-        `}>
-            {data.label}
-        </div>
-    );
-};
-
-const nodeTypes = { custom: CustomNode };
+const nodeTypes = { animatedNode: AnimatedNode };
+const edgeTypes = { animatedEdge: AnimatedEdge };
 
 interface ExperimentViewProps {
   experiment: Experiment;
@@ -45,7 +31,7 @@ const ExperimentView: React.FC<ExperimentViewProps> = ({ experiment, onBack }) =
   useEffect(() => {
     const initialNodes: MarkovNodeType[] = experiment.config.nodes.map(node => ({
       id: node.id,
-      type: 'custom',
+      type: 'animatedNode',
       data: { label: node.label, isCurrent: node.id === experiment.config.initialState },
       position: { x: 0, y: 0 },
     }));
@@ -57,11 +43,10 @@ const ExperimentView: React.FC<ExperimentViewProps> = ({ experiment, onBack }) =
           id: `${sourceId}-${targetId}`,
           source: sourceId,
           target: targetId,
+          type: 'animatedEdge',
+          data: { isTraversed: false },
           label: `${probability * 100}%`,
-          animated: sourceId === targetId, // Animate self-loops
-          type: 'smoothstep',
           style: { stroke: 'var(--primary-focus)', strokeWidth: 2, transition: 'stroke 0.3s ease, stroke-width 0.3s ease' },
-          labelStyle: { fill: 'var(--primary-light)', fontWeight: 'bold' },
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--primary-focus)' },
         });
       });
@@ -84,49 +69,28 @@ const ExperimentView: React.FC<ExperimentViewProps> = ({ experiment, onBack }) =
       }))
     );
 
-    if (previousState) {
-        setEdges((eds) =>
-            eds.map((edge) => {
-                const isTraversedEdge = edge.source === previousState && edge.target === currentState;
-                const isSelfLoop = edge.source === edge.target;
-                
-                return {
-                    ...edge,
-                    animated: isTraversedEdge || isSelfLoop,
-                    style: {
-                        ...edge.style,
-                        stroke: isTraversedEdge ? 'var(--primary-light)' : 'var(--primary-focus)',
-                        strokeWidth: isTraversedEdge ? 3 : 2,
-                    },
-                    markerEnd: {
-                        // FIX: Spread types may only be created from object types.
-                        // Ensure `edge.markerEnd` is an object before spreading to satisfy TypeScript.
-                        ...(typeof edge.markerEnd === 'object' && edge.markerEnd ? edge.markerEnd : { type: MarkerType.ArrowClosed }),
-                        color: isTraversedEdge ? 'var(--primary-light)' : 'var(--primary-focus)',
-                    }
-                };
-            })
-        );
-    } else {
-        // On reset (previousState is null), reset all edges to default state
-        setEdges((eds) => 
-            eds.map((edge) => ({
+    setEdges((eds) =>
+        eds.map((edge) => {
+            const isTraversedEdge = edge.source === previousState && edge.target === currentState;
+            
+            return {
                 ...edge,
-                animated: edge.source === edge.target, // only self-loops
+                data: {
+                    ...edge.data,
+                    isTraversed: isTraversedEdge,
+                },
                 style: {
                     ...edge.style,
-                    stroke: 'var(--primary-focus)',
-                    strokeWidth: 2,
+                    stroke: isTraversedEdge ? 'var(--primary-light)' : 'var(--primary-focus)',
+                    strokeWidth: isTraversedEdge ? 3 : 2,
                 },
                 markerEnd: {
-                    // FIX: Spread types may only be created from object types.
-                    // Ensure `edge.markerEnd` is an object before spreading to satisfy TypeScript.
                     ...(typeof edge.markerEnd === 'object' && edge.markerEnd ? edge.markerEnd : { type: MarkerType.ArrowClosed }),
-                    color: 'var(--primary-focus)',
+                    color: isTraversedEdge ? 'var(--primary-light)' : 'var(--primary-focus)',
                 }
-            }))
-        )
-    }
+            };
+        })
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentState, previousState]);
 
@@ -192,6 +156,7 @@ const ExperimentView: React.FC<ExperimentViewProps> = ({ experiment, onBack }) =
                 nodes={nodes}
                 edges={edges}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 fitView
                 className="bg-[var(--background)]"
             >
